@@ -1,0 +1,56 @@
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+.vs/
+out/
+build/
+x64/
+Debug/
+Release/
+CMakeSettings.json
+CMakeUserPresets.json
+
+# C++ builds
+/build/
+/out/
+CMakeCache.txt
+CMakeFiles/
+CMakeDefs.txt
+Makefile
+cmake_install.cmake
+install_manifest.txt
