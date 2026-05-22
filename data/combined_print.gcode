@@ -2,7 +2,7 @@
 % before_layer_gcode = 
 % gcode_arcs = 0
 % gcode_comments = 1
-% gcode_flavor = Unnati DED
+% gcode_flavor = Custom DED
 % has_heatbed = 1
 % infill_first = 0
 % layer_gcode = 

@@ -281,7 +281,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
 // --- Main Application Entry ---
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nCmdShow) {
-    const char CLASS_NAME[] = "ForgeOS_Native_Class";
+    const char CLASS_NAME[] = "3D_Viewport_Class";
     WNDCLASS wc = {0};
     wc.lpfnWndProc = WindowProc;
     wc.hInstance = hInstance;
@@ -289,7 +289,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     wc.style = CS_OWNDC;
     RegisterClass(&wc);
 
-    HWND hwnd = CreateWindowEx(0, CLASS_NAME, "Unnati 5D - ForgeOS [Phase 4: Real G-Code & Pan]", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 1280, 720, NULL, NULL, hInstance, NULL);
+    HWND hwnd = CreateWindowEx(0, CLASS_NAME, "3D Toolpath Viewport [Phase 4]", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 1280, 720, NULL, NULL, hInstance, NULL);
     if (hwnd == NULL) return 0;
 
     HDC hdc = GetDC(hwnd);
@@ -353,7 +353,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
         char buffer[256];
         
         glRasterPos2i(10, 25);
-        sprintf_s(buffer, "Unnati 5D Viewport - DED Simulation");
+        sprintf_s(buffer, "3D Toolpath Viewport - Simulation");
         glPushAttrib(GL_LIST_BIT);
         glListBase(fontBase - 32);
         glCallLists((GLsizei)strlen(buffer), GL_UNSIGNED_BYTE, buffer);
