@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # The WIN32 flag tells CMake to build a Windows GUI application
-add_executable(PrintEngine WIN32 main.cpp)
+add_executable(PrintEngine WIN32 main.cpp ViewportWindow.cpp)
 
 # We link directly to the Windows Operating System's built-in DLLs!
 target_link_libraries(PrintEngine PRIVATE opengl32 glu32 user32 gdi32)
