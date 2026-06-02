@@ -270,8 +270,8 @@ void ViewportWindow::DrawGCode() {
         glEnableClientState(GL_VERTEX_ARRAY);
         glEnableClientState(GL_COLOR_ARRAY);
         
-        glVertexPointer(3, GL_FLOAT, 0, m_state->vertexArray.data());
-        glColorPointer(3, GL_FLOAT, 0, m_state->colorArray.data());
+        glVertexPointer(3, GL_FLOAT, 0, &m_state->vertexArray[0]);
+        glColorPointer(3, GL_FLOAT, 0, &m_state->colorArray[0]);
         
         glDrawArrays(GL_LINES, 0, m_state->displayIndex * 2);
         
