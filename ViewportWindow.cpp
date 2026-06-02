@@ -9,27 +9,27 @@
 
 // Hide implementation details and state from the header
 struct ViewportState {
-    bool isDragging = false;
-    bool isPanning = false;
-    bool isDraggingSlider = false;
-    int lastMouseX = 0;
-    int lastMouseY = 0;
+    bool isDragging;
+    bool isPanning;
+    bool isDraggingSlider;
+    int lastMouseX;
+    int lastMouseY;
 
-    int maxIndex = 0;
-    int displayIndex = 0;
-    GLuint fontBase = 0;
+    int maxIndex;
+    int displayIndex;
+    GLuint fontBase;
 
-    float cameraYaw = 45.0f;
-    float cameraPitch = 30.0f;
-    float cameraZoom = -200.0f;
+    float cameraYaw;
+    float cameraPitch;
+    float cameraZoom;
 
-    float cameraTargetX = 0.0f;
-    float cameraTargetY = 0.0f;
-    float cameraTargetZ = 0.0f;
+    float cameraTargetX;
+    float cameraTargetY;
+    float cameraTargetZ;
 
-    float orbitSensitivity = 0.35f; 
-    float zoomSensitivity = 2.5f;
-    float panSensitivity = 0.25f;
+    float orbitSensitivity; 
+    float zoomSensitivity;
+    float panSensitivity;
 
     // We store the raw points for HUD
     struct GCodeSegment {
@@ -43,11 +43,20 @@ struct ViewportState {
     std::vector<float> colorArray;
 
     // Used for keeping track of the previous point when building segments
-    float prevX = 0.0f;
-    float prevY = 0.0f;
-    float prevZ = 0.0f;
-    bool hasPrevious = false;
-    int currentLayer = 1;
+    float prevX;
+    float prevY;
+    float prevZ;
+    bool hasPrevious;
+    int currentLayer;
+
+    ViewportState() : 
+        isDragging(false), isPanning(false), isDraggingSlider(false),
+        lastMouseX(0), lastMouseY(0), maxIndex(0), displayIndex(0), fontBase(0),
+        cameraYaw(45.0f), cameraPitch(30.0f), cameraZoom(-200.0f),
+        cameraTargetX(0.0f), cameraTargetY(0.0f), cameraTargetZ(0.0f),
+        orbitSensitivity(0.35f), zoomSensitivity(2.5f), panSensitivity(0.25f),
+        prevX(0.0f), prevY(0.0f), prevZ(0.0f), hasPrevious(false), currentLayer(1)
+    {}
 };
 
 ViewportWindow::ViewportWindow() : m_hwnd(NULL), m_hdc(NULL), m_hrc(NULL) {
@@ -140,7 +149,12 @@ void ViewportWindow::AddToolpathPoint(float x, float y, float z, bool isExtrude)
         // OpenGL maps: Y is Up. So we map Printer Z to GL Y!
         // Printer Coordinates: x=X, y=Y, z=Z
         // GL Coordinates: X=x, Y=z, Z=y
-        m_state->mockGCode.push_back({ m_state->prevX, m_state->prevZ, m_state->prevY, x, z, y, isExtrude, m_state->currentLayer });
+        ViewportState::GCodeSegment seg;
+        seg.x1 = m_state->prevX; seg.y1 = m_state->prevZ; seg.z1 = m_state->prevY;
+        seg.x2 = x; seg.y2 = z; seg.z2 = y;
+        seg.isExtrude = isExtrude;
+        seg.layer = m_state->currentLayer;
+        m_state->mockGCode.push_back(seg);
         
         m_state->vertexArray.push_back(m_state->prevX);
         m_state->vertexArray.push_back(m_state->prevZ);
@@ -169,6 +183,44 @@ void ViewportWindow::AddToolpathPoint(float x, float y, float z, bool isExtrude)
 void ViewportWindow::CommitToolpathToGPU() {
     m_state->maxIndex = (int)m_state->mockGCode.size();
     m_state->displayIndex = m_state->maxIndex;
+    
+    // Auto-center and auto-zoom the camera based on the bounding box of the points
+    if (!m_state->vertexArray.empty()) {
+        float minX = m_state->vertexArray[0], maxX = minX;
+        float minY = m_state->vertexArray[1], maxY = minY;
+        float minZ = m_state->vertexArray[2], maxZ = minZ;
+        
+        for (size_t i = 0; i < m_state->vertexArray.size(); i += 3) {
+            float vx = m_state->vertexArray[i];
+            float vy = m_state->vertexArray[i+1];
+            float vz = m_state->vertexArray[i+2];
+            
+            if (vx < minX) minX = vx;
+            if (vx > maxX) maxX = vx;
+            if (vy < minY) minY = vy;
+            if (vy > maxY) maxY = vy;
+            if (vz < minZ) minZ = vz;
+            if (vz > maxZ) maxZ = vz;
+        }
+        
+        m_state->cameraTargetX = (minX + maxX) / 2.0f;
+        m_state->cameraTargetY = (minY + maxY) / 2.0f;
+        m_state->cameraTargetZ = (minZ + maxZ) / 2.0f;
+        
+        float dx = maxX - minX;
+        float dy = maxY - minY;
+        float dz = maxZ - minZ;
+        
+        float maxDim = dx;
+        if (dy > maxDim) maxDim = dy;
+        if (dz > maxDim) maxDim = dz;
+        
+        if (maxDim < 1.0f) maxDim = 1.0f;
+        
+        m_state->cameraZoom = -maxDim * 1.5f;
+        m_state->zoomSensitivity = maxDim / 50.0f;
+        m_state->panSensitivity = maxDim / 500.0f;
+    }
     
     // We can force a redraw immediately
     InvalidateRect(m_hwnd, NULL, FALSE);
@@ -242,7 +294,14 @@ void ViewportWindow::Render() {
     glViewport(0, 0, width, height);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(45.0, (double)width / (double)height, 0.1, 1000.0);
+    
+    // Calculate far plane dynamically so we never clip the object
+    double farPlane = 1000.0;
+    if (m_state->cameraZoom < -500.0f) {
+        farPlane = (double)(-m_state->cameraZoom * 10.0f);
+    }
+    
+    gluPerspective(45.0, (double)width / (double)height, 0.1, farPlane);
     glMatrixMode(GL_MODELVIEW);
     
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -284,8 +343,8 @@ void ViewportWindow::Render() {
     sprintf_s(buffer, "Points: %d / %d", m_state->displayIndex, (int)m_state->mockGCode.size());
     glCallLists((GLsizei)strlen(buffer), GL_UNSIGNED_BYTE, buffer);
     
-    if (m_state->displayIndex > 0 && m_state->displayIndex <= m_state->mockGCode.size()) {
-        auto& seg = m_state->mockGCode[m_state->displayIndex - 1];
+    if (m_state->displayIndex > 0 && m_state->displayIndex <= (int)m_state->mockGCode.size()) {
+        ViewportState::GCodeSegment& seg = m_state->mockGCode[m_state->displayIndex - 1];
         glRasterPos2i(10, 75);
         sprintf_s(buffer, "Machine Pos: X=%.3f Y=%.3f Z=%.3f", seg.x2, seg.z2, seg.y2);
         glCallLists((GLsizei)strlen(buffer), GL_UNSIGNED_BYTE, buffer);
